@@ -1,0 +1,42 @@
+name: Docker Image CI/CD
+on:
+  # 只有每次master 分支 push tag 时进行构建. 使用通配符匹配每次 tag (必须以 v 开头) 的提交.
+  push:
+    branches:
+      - master
+    tags:
+      - v*
+
+env:
+  # 设置 docker 镜像名
+  IMAGE_NAME: base-ubuntu20.04-ccpp
+
+jobs:
+  # 构建并上传 Docker镜像
+  build: 
+    runs-on: ubuntu-latest # 依赖的环境      
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Image
+        run: docker build -t $IMAGE_NAME .
+      - name: Login to Registry
+        run: docker login -u=${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_TOKEN }}
+      - name: Push Image
+        run: |
+          # 拼接镜像 id，这个镜像 id 就是在使用 docker 镜像时 pull 后面的名字。
+          IMAGE_ID=zhangzongkai/$IMAGE_NAME
+          # 将所有的大写字母转为小写
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+          # 从 GitHub.ref 中取出版本
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          # 从 tag 名字中替换 v 字符
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+          # 设置镜像 id 和版本号
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          # 进行 push
+          docker push $IMAGE_ID:$VERSION
+
