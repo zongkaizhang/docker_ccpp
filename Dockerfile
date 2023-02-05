@@ -8,5 +8,6 @@ MAINTAINER kai
 RUN apt update \
     && apt install -y gcc g++ \
     && apt install -y cmake \
-    && apt install -y libgtest-dev
+    && apt install -y libgtest-dev \
+    && apt install -y lcov
 
